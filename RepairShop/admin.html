@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الصيانة | THE ONE STORE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #0B192C;
+            --accent: #FFD700;
+            --bg-main: #F8FAFC;
+            --text-dark: #1E293B;
+            --border: #E2E8F0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background: var(--bg-main); color: var(--text-dark); display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+        .admin-header {
+            width: 100%; background: linear-gradient(135deg, var(--primary) 0%, #1E3E62 100%);
+            color: white; padding: 30px 20px; text-align: center; border-bottom: 4px solid var(--accent); margin-bottom: 40px;
+        }
+
+        .admin-container {
+            background: white; width: 100%; max-width: 600px; padding: 40px;
+            border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 50px;
+        }
+
+        .admin-container h2 { text-align: center; margin-bottom: 30px; color: var(--primary); font-weight: 800; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.95rem; }
+        .form-group input, .form-group textarea {
+            width: 100%; padding: 12px 16px; border: 2px solid var(--border); border-radius: 8px;
+            font-size: 1rem; transition: all 0.3s ease; outline: none; background: #F8FAFC;
+        }
+        .form-group input:focus, .form-group textarea:focus { border-color: var(--primary); background: white; }
+        
+        .submit-btn {
+            width: 100%; background: var(--primary); color: white; border: none; padding: 16px;
+            font-size: 1.1rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: 0.3s;
+            margin-top: 10px; display: flex; justify-content: center; align-items: center;
+        }
+        .submit-btn:hover { background: #1a2a40; }
+        .submit-btn:disabled { background: #94A3B8; cursor: not-allowed; }
+
+        .spinner {
+            display: none; width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 10px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Success Message Area */
+        .success-banner {
+            display: none; background: #DCFCE7; color: #14532D; padding: 15px; 
+            border-radius: 8px; text-align: center; margin-bottom: 20px; font-weight: 700;
+        }
+
+        #receipt-area { display: none; }
+
+        @media print {
+            body * { visibility: hidden; }
+            body { background: white; }
+            #receipt-area, #receipt-area * { visibility: visible; }
+            #receipt-area {
+                display: block !important; position: absolute; left: 0; top: 0; width: 100%; max-width: 80mm;
+                margin: 0; padding: 10px; background: white; color: black;
+            }
+            .receipt-header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 15px; }
+            .receipt-header h1 { font-size: 1.4rem; font-weight: 800; }
+            .receipt-details { margin-bottom: 15px; font-size: 0.9rem; line-height: 1.6; }
+            .receipt-details .item { border-bottom: 1px solid #eee; padding: 4px 0; display: flex; justify-content: space-between; }
+            .receipt-qr { text-align: center; margin: 15px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+            .receipt-qr canvas, .receipt-qr img { margin: 0 auto !important; }
+            .receipt-footer { text-align: center; font-size: 0.75rem; border-top: 2px dashed #000; padding-top: 10px; margin-top: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-header">
+        <h1>THE ONE STORE</h1>
+        <p>بوابة استقبال الأجهزة</p>
+    </div>
+
+    <div class="admin-container">
+        <div class="success-banner" id="successBanner">تم حفظ البيانات بنجاح وجاري تجهيز الطباعة...</div>
+        <h2>تسجيل عطل جديد</h2>
+        <form id="intakeForm">
+            <div class="form-group">
+                <label>اسم الزبون</label>
+                <input type="text" id="name" required placeholder="أدخل اسم الزبون">
+            </div>
+            <div class="form-group">
+                <label>رقم الهاتف</label>
+                <input type="tel" id="phone" required placeholder="07XXXXXXXX">
+            </div>
+            <div class="form-group">
+                <label>نوع الجهاز / الموديل</label>
+                <input type="text" id="device" required placeholder="مثال: iPhone 13 Pro Max">
+            </div>
+            <div class="form-group">
+                <label>تفاصيل العطل</label>
+                <textarea id="issue" rows="3" required placeholder="شاشة مكسورة، تبديل بطارية..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>السعر المتوقع</label>
+                <input type="text" id="price" placeholder="مثال: 50,000 دينار">
+            </div>
+            
+            <button type="submit" id="submitBtn" class="submit-btn">
+                <div class="spinner" id="spinner"></div>
+                <span>حفظ وطباعة الوصل</span>
+            </button>
+        </form>
+    </div>
+
+    <div id="receipt-area">
+        <div class="receipt-header">
+            <h1>THE ONE STORE</h1>
+            <p>مركز الصيانة المعتمد</p>
+            <p>وصل استلام جهاز</p>
+        </div>
+        <div class="receipt-details">
+            <div class="item"><span>رقم التذكرة:</span> <span id="r-id" style="font-weight:bold;"></span></div>
+            <div class="item"><span>التاريخ:</span> <span id="r-date"></span></div>
+            <div class="item"><span>الزبون:</span> <span id="r-name"></span></div>
+            <div class="item"><span>الهاتف:</span> <span id="r-phone"></span></div>
+            <div class="item"><span>الجهاز:</span> <span id="r-device"></span></div>
+            <div class="item"><span>العطل:</span> <span id="r-issue"></span></div>
+            <div class="item"><span>السعر:</span> <span id="r-price" style="font-weight:bold;"></span></div>
+        </div>
+        <div class="receipt-qr">
+            <div id="qrcode"></div>
+            <p style="font-size:0.8rem; margin-top:8px;">امسح الرمز لتتبع حالة جهازك</p>
+        </div>
+        <div class="receipt-footer">
+            <p>شكراً لثقتكم بنا!</p>
+            <p>العنوان: الحلة / شارع أربعين - عمارة فلوريس - قرب تقاطع باب الحسين</p>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzJGYx1AO7g73gQ0G0mPiJ4nH06b84nm_wY6kHMGxgPXxvjVwjtmSdGWx7hs4DloD4b/exec";
+        // Change this domain string to your actual frontend url if needed
+        const TRACK_URL = "https://the-one-store.netlify.app/track.html"; 
+
+        document.getElementById('intakeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('submitBtn');
+            const spinner = document.getElementById('spinner');
+            const banner = document.getElementById('successBanner');
+            
+            // Immediately lock button to prevent double-submitting
+            btn.disabled = true;
+            spinner.style.display = "inline-block";
+            btn.querySelector('span').innerText = "جاري الحفظ...";
+
+            const masterTicketId = 'REP-' + Math.floor(10000 + Math.random() * 90000);
+
+            const data = {
+                id: masterTicketId,
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                device: document.getElementById('device').value,
+                issue: document.getElementById('issue').value,
+                price: document.getElementById('price').value || 'يحدد بعد الفحص'
+            };
+
+            // Process receipt DOM updates BEFORE printing loops trigger
+            document.getElementById('r-id').innerText = masterTicketId;
+            document.getElementById('r-date').innerText = new Date().toLocaleString('ar-IQ');
+            document.getElementById('r-name').innerText = data.name;
+            document.getElementById('r-phone').innerText = data.phone;
+            document.getElementById('r-device').innerText = data.device;
+            document.getElementById('r-issue').innerText = data.issue;
+            document.getElementById('r-price').innerText = data.price;
+
+            // Generate clean QR code alignment
+            document.getElementById('qrcode').innerHTML = ""; 
+            new QRCode(document.getElementById("qrcode"), {
+                text: `${TRACK_URL}?id=${masterTicketId}`,
+                width: 130,
+                height: 130,
+                colorDark : "#000000",
+                colorLight : "#ffffff"
+            });
+
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(() => {
+                banner.style.display = "block";
+                btn.querySelector('span').innerText = "تم الإرسال";
+                
+                // Allow layout engine to settle completely before raising print windows
+                setTimeout(() => { 
+                    window.print(); 
+                    
+                    // Reset UI fully post-printing
+                    btn.disabled = false;
+                    spinner.style.display = "none";
+                    banner.style.display = "none";
+                    btn.querySelector('span').innerText = "حفظ وطباعة الوصل";
+                    document.getElementById('intakeForm').reset();
+                }, 800);
+            })
+            .catch(error => {
+                alert('خطأ في الاتصال، تحقق من شبكة الإنترنت الخاصة بك.');
+                btn.disabled = false;
+                spinner.style.display = "none";
+                btn.querySelector('span').innerText = "حفظ وطباعة الوصل";
+            });
+        });
+    </script>
+</body>
+</html>
